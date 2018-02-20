@@ -77,17 +77,17 @@ static std::string sourceCode_convolve1 = R"(
         // output = outputs * height * width
         // weights = output * channels * filter
         // merge = channels * outputs * height * width
-        const int width = 19;
-        const int height = 19;
+        const int width = 9;
+        const int height = 9;
         const int strip_size = width;
         // Copy the input channels (strips) locally
-        if (out_buff_size < 19 && ly == 0) {
+        if (out_buff_size < 9 && ly == 0) {
             // strip-row
             for (int w = 0; w < width; w++) {
                 channel_buff[lx * width + w] =
                     vload_net_t((c * height + row) * width + w, in);
             }
-        } else if (out_buff_size >= 19 && ly < 19) {
+        } else if (out_buff_size >= 9 && ly < 9) {
             // Every thread copies a column
             channel_buff[lx * width + ly] = vload_net_t((c * height + row) * width + ly, in);
         }
@@ -127,14 +127,14 @@ __kernel void merge(
                         __global const net_t * restrict in,
                         __global net_t * restrict out,
                         __private const int channels) {
-        // cl::NDRange global(outputs, 19*19);
+        // cl::NDRange global(outputs, 9*9);
         const int gx = get_global_id(0);
         const int gy = get_global_id(1);
         const int output = gx;
         const int b = gy;
         const int outputs = get_global_size(0);
-        const int width = 19;
-        const int height = 19;
+        const int width = 9;
+        const int height = 9;
         const int boardsize = width * height;
         const int o = output;
         float sum = 0;
@@ -187,8 +187,8 @@ void __in_transform_eq(float x[4][4], __global float * restrict V, int offset, i
 __kernel void in_transform(__global net_t * restrict in, __global float * restrict V,
                            const int C, const int Cpad,
                            const int Ppad) {
-    const int W = 19;
-    const int H = 19;
+    const int W = 9;
+    const int H = 9;
     const int T = W*H;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES*WTILES;
@@ -228,8 +228,8 @@ __kernel void in_transform(__global net_t * restrict in, __global float * restri
 void __out_transform_eq(__global const float * restrict M, float o[4],
                         int Kpad, int Ppad, int block_x, int block_y)
 {
-    const int W = 19;
-    const int H = 19;
+    const int W = 9;
+    const int H = 9;
     const int WTILES = (W + 1) / 2;
     const int b = block_y * WTILES + block_x;
     const int KPpad = Kpad * Ppad;
@@ -263,8 +263,8 @@ __kernel void out_transform_fused_bn(__global const float * restrict M,
                                      __global const net_t * restrict residual,
                                      __constant const net_t * restrict means,
                                      __constant const net_t * restrict stddivs) {
-    const int W = 19;
-    const int H = 19;
+    const int W = 9;
+    const int H = 9;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES * WTILES;
 
@@ -312,8 +312,8 @@ __kernel void out_transform_fused_bn_in(
                                      __constant const net_t * restrict means,
                                      __constant const net_t * restrict stddivs,
                                      __local float * ybuf) {
-    const int W = 19;
-    const int H = 19;
+    const int W = 9;
+    const int H = 9;
     const int T = W*H;
     const int WTILES = (W + 1) / 2;
     const int P = WTILES * WTILES;
@@ -439,8 +439,8 @@ void OpenCL_Network::add_weights(size_t layer,
 void OpenCL_Network::forward(const std::vector<net_t>& input,
                              std::vector<net_t>& output_pol,
                              std::vector<net_t>& output_val) {
-    constexpr auto width = 19;
-    constexpr auto height = 19;
+    constexpr auto width = 9;
+    constexpr auto height = 9;
     constexpr auto tiles = WINOGRAD_P;
     constexpr auto one_plane = width * height * sizeof(net_t);
     const auto finalSize_pol = m_layers[m_layers.size()-2].outputs * one_plane;
@@ -641,8 +641,8 @@ void OpenCL_Network::convolve3(int channels, int outputs,
     assert(wavefront_size != 0);
 
     constexpr auto tiles = WINOGRAD_P;
-    constexpr auto width = 19;
-    constexpr auto height = 19;
+    constexpr auto width = 9;
+    constexpr auto height = 9;
 
     auto wgs = ceilMultiple(tiles, wavefront_size);
     auto m_ceil = int(ceilMultiple(ceilMultiple(outputs, mwg), vwm));
@@ -750,11 +750,11 @@ void OpenCL_Network::convolve1(int channels, int outputs,
                               cl::Buffer& bufferOutput,
                               cl::Buffer& bufferMerge,
                               weight_slice_t weights) {
-    // fixed for 19x19
-    constexpr int width = 19;
-    constexpr int height = 19;
+    // fixed for 9x9
+    constexpr int width = 9;
+    constexpr int height = 9;
     constexpr int boardsize = width * height;
-    constexpr int rowTiles = 19;
+    constexpr int rowTiles = 9;
 
     // Input channel grouping in multiples of 8
     constexpr int channelGroup = 8;
@@ -807,7 +807,7 @@ void OpenCL_Network::convolve1(int channels, int outputs,
 
         queue.enqueueNDRangeKernel(merge_kernel, cl::NullRange,
                                    cl::NDRange(outputs, boardsize),
-                                   cl::NDRange(std::min(8, outputs), 19));
+                                   cl::NDRange(std::min(8, outputs), 9));
     } catch (const cl::Error &e) {
         std::cerr << "Error in merge: " << e.what() << ": "
 	        << e.err() << std::endl;

@@ -155,7 +155,7 @@ void Training::record(GameState& state, UCTNode& root) {
     step.child_uct_winrate = best_node.get_eval(step.to_move);
     step.bestmove_visits = best_node.get_visits();
 
-    step.probabilities.resize((19 * 19) + 1);
+    step.probabilities.resize((9 * 9) + 1);
 
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
@@ -177,9 +177,9 @@ void Training::record(GameState& state, UCTNode& root) {
         auto move = child->get_move();
         if (move != FastBoard::PASS) {
             auto xy = state.board.get_xy(move);
-            step.probabilities[xy.second * 19 + xy.first] = prob;
+            step.probabilities[xy.second * 9 + xy.first] = prob;
         } else {
-            step.probabilities[19 * 19] = prob;
+            step.probabilities[9 * 9] = prob;
         }
     }
 
@@ -308,9 +308,9 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         if (move_vertex != FastBoard::PASS) {
             // get x y coords for actual move
             auto xy = state.board.get_xy(move_vertex);
-            move_idx = (xy.second * 19) + xy.first;
+            move_idx = (xy.second * 9) + xy.first;
         } else {
-            move_idx = 19 * 19; // PASS
+            move_idx = 9 * 9; // PASS
         }
 
         auto step = TimeStep{};
@@ -318,7 +318,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         step.planes = Network::NNPlanes{};
         Network::gather_features(&state, step.planes);
 
-        step.probabilities.resize((19 * 19) + 1);
+        step.probabilities.resize((9 * 9) + 1);
         step.probabilities[move_idx] = 1.0f;
 
         train_pos++;
@@ -374,7 +374,7 @@ void Training::dump_supervised(const std::string& sgf_name,
         auto state =
             std::make_unique<GameState>(sgftree->follow_mainline_state());
         // Our board size is hardcoded in several places
-        if (state->board.get_boardsize() != 19) {
+        if (state->board.get_boardsize() != 9) {
             continue;
         }
 

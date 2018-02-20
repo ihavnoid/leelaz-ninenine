@@ -27,7 +27,7 @@ import time
 import tensorflow as tf
 from tfprocess import TFProcess
 
-# 16 planes, 1 side to move, 1 x 362 probs, 1 winner = 19 lines
+# 16 planes, 1 side to move, 1 x 82 probs, 1 winner = 19 lines
 DATA_ITEM_LINES = 16 + 1 + 1 + 1
 
 # Sane values are from 4096 to 64 or so. The maximum depends on the amount
@@ -39,31 +39,31 @@ def remap_vertex(vertex, symmetry):
     """
         Remap a go board coordinate according to a symmetry.
     """
-    assert vertex >= 0 and vertex < 361
-    x = vertex % 19
-    y = vertex // 19
+    assert vertex >= 0 and vertex < 81
+    x = vertex % 9 
+    y = vertex // 9
     if symmetry >= 4:
         x, y = y, x
         symmetry -= 4
     if symmetry == 1 or symmetry == 3:
-        x = 19 - x - 1
+        x = 9 - x - 1
     if symmetry == 2 or symmetry == 3:
-        y = 19 - y - 1
-    return y * 19 + x
+        y = 9 - y - 1
+    return y * 9 + x
 
 class ChunkParser:
     def __init__(self, chunks, workers=None):
         # Build probility reflection tables. The last element is 'pass' and is identity mapped.
-        self.prob_reflection_table = [[remap_vertex(vertex, sym) for vertex in range(361)]+[361] for sym in range(8)]
+        self.prob_reflection_table = [[remap_vertex(vertex, sym) for vertex in range(81)]+[81] for sym in range(8)]
         # Build full 16-plane reflection tables.
         self.full_reflection_table = [
-            [remap_vertex(vertex, sym) + p * 361 for p in range(16) for vertex in range(361) ]
+            [remap_vertex(vertex, sym) + p * 81 for p in range(16) for vertex in range(81) ]
                 for sym in range(8) ]
         # Convert both to np.array. This avoids a conversion step when they're actually used.
         self.prob_reflection_table = [ np.array(x, dtype=np.int64) for x in self.prob_reflection_table ]
         self.full_reflection_table = [ np.array(x, dtype=np.int64) for x in self.full_reflection_table ]
         # Build the all-zeros and all-ones flat planes, used for color-to-move.
-        self.flat_planes = [ b'\0' * 361, b'\1' * 361 ]
+        self.flat_planes = [ b'\0' * 81, b'\1' * 81 ]
 
         # Start worker processes, leave 2 for TensorFlow
         if workers is None:
@@ -80,29 +80,29 @@ class ChunkParser:
         """
             Convert textual training data to a tf.train.Example
 
-            Converts a set of 19 lines of text into a pythonic dataformat.
+            Converts a set of 9 lines of text into a pythonic dataformat.
             [[plane_1],[plane_2],...],...
             [probabilities],...
             winner,...
         """
         assert symmetry >= 0 and symmetry < 8
 
-        # We start by building a list of 16 planes, each being a 19*19 == 361 element array
+        # We start by building a list of 16 planes, each being a 9*9 == 81 element array
         # of type np.uint8
         planes = []
         for plane in range(0, 16):
-            # first 360 first bits are 90 hex chars, encoded MSB
-            hex_string = text_item[plane][0:90]
+            # first 80 first bits are 20 hex chars, encoded MSB
+            hex_string = text_item[plane][0:20]
             array = np.unpackbits(np.frombuffer(bytearray.fromhex(hex_string), dtype=np.uint8))
             # Remaining bit that didn't fit. Encoded LSB so
             # it needs to be specially handled.
-            last_digit = text_item[plane][90]
+            last_digit = text_item[plane][20]
             assert last_digit == "0" or last_digit == "1"
             # Apply symmetry and append
             planes.append(array)
             planes.append(np.array([last_digit], dtype=np.uint8))
 
-        # We flatten to a single array of len 16*19*19, type=np.uint8
+        # We flatten to a single array of len 16*9*9, type=np.uint8
         planes = np.concatenate(planes)
 
         # We use the full length reflection tables to apply symmetry
@@ -113,7 +113,7 @@ class ChunkParser:
 
         # Now we add the two final planes, being the 'color to move' planes.
         # These already a fully symmetric, so we add them directly as byte
-        # strings of length 361.
+        # strings of length 81.
         stm = text_item[16][0]
         assert stm == "0" or stm == "1"
         stm = int(stm)
@@ -122,7 +122,7 @@ class ChunkParser:
 
         # Flatten all planes to a single byte string
         planes = b''.join(planes)
-        assert len(planes) == (18 * 19 * 19)
+        assert len(planes) == (18 * 9 * 9)
 
         # Load the probabilities.
         probabilities = np.array(text_item[17].split()).astype(float)
@@ -132,7 +132,7 @@ class ChunkParser:
             return False, None
         # Apply symmetries to the probabilities.
         probabilities = probabilities[self.prob_reflection_table[symmetry]]
-        assert len(probabilities) == 362
+        assert len(probabilities) == 82
 
         # Load the game winner color.
         winner = float(text_item[18])
@@ -180,15 +180,15 @@ def get_chunks(data_prefix):
 def generate_fake_pos():
     """
         Generate a random game position.
-        Result is ([[361] * 18], [362], [1])
+        Result is ([[81] * 18], [82], [1])
     """
-    # 1. 18 binary planes of length 361
-    planes = [np.random.randint(2, size=361).tolist() for plane in range(16)]
+    # 1. 18 binary planes of length 81
+    planes = [np.random.randint(2, size=81).tolist() for plane in range(16)]
     stm = float(np.random.randint(2))
-    planes.append([stm] * 361)
-    planes.append([1. - stm] * 361)
-    # 2. 362 probs
-    probs = np.random.randint(3, size=362).tolist()
+    planes.append([stm] * 81)
+    planes.append([1. - stm] * 81)
+    # 2. 82 probs
+    probs = np.random.randint(3, size=82).tolist()
     # 3. And a winner: 1 or -1
     winner = [ 2 * float(np.random.randint(2)) - 1 ]
     return (planes, probs, winner)
@@ -232,8 +232,8 @@ def run_test(parser):
             data = (data[0].tolist(), data[1].tolist(), data[2].tolist())
 
             # Apply the symmetry to the original
-            sym_planes = [ [ plane[remap_vertex(vertex, symmetry)] for vertex in range(361) ] for plane in planes ]
-            sym_probs = [ probs[remap_vertex(vertex, symmetry)] for vertex in range(361)] + [probs[361]]
+            sym_planes = [ [ plane[remap_vertex(vertex, symmetry)] for vertex in range(81) ] for plane in planes ]
+            sym_probs = [ probs[remap_vertex(vertex, symmetry)] for vertex in range(81)] + [probs[81]]
 
             # Check that what we got out matches what we put in.
             assert data == (sym_planes, sym_probs, winner)
@@ -244,14 +244,14 @@ def run_test(parser):
 # NB: This conversion is done in the tensorflow graph, NOT in python.
 def _parse_function(example_proto):
     features = {"planes": tf.FixedLenFeature((1), tf.string),
-                "probs": tf.FixedLenFeature((19*19+1), tf.float32),
+                "probs": tf.FixedLenFeature((9*9+1), tf.float32),
                 "winner": tf.FixedLenFeature((1), tf.float32)}
     parsed_features = tf.parse_single_example(example_proto, features)
     # We receives the planes as a byte array, but we really want
-    # floats of shape (18, 19*19), so decode, cast, and reshape.
+    # floats of shape (18, 9*9), so decode, cast, and reshape.
     planes = tf.decode_raw(parsed_features["planes"], tf.uint8)
     planes = tf.to_float(planes)
-    planes = tf.reshape(planes, (18, 19*19))
+    planes = tf.reshape(planes, (18, 9*9))
     # the other features are already in the correct shape as return as-is.
     return planes, parsed_features["probs"], parsed_features["winner"]
 

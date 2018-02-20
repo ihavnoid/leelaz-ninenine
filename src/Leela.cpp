@@ -315,7 +315,7 @@ int main (int argc, char *argv[]) {
 
     /* set board limits */
     auto komi = 7.5f;
-    maingame->init_game(19, komi);
+    maingame->init_game(9, komi);
 
     for(;;) {
         if (!cfg_gtp_mode) {

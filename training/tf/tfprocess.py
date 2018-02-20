@@ -50,7 +50,7 @@ class TFProcess:
     def __init__(self):
         # Network structure
         self.RESIDUAL_FILTERS = 128
-        self.RESIDUAL_BLOCKS = 6
+        self.RESIDUAL_BLOCKS = 10
 
         # For exporting
         self.weights = []
@@ -73,7 +73,7 @@ class TFProcess:
         self.init_net(self.next_batch)
 
     def init_net(self, next_batch):
-        self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 19 * 19])
+        self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 9 * 9])
         self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
         self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
@@ -341,8 +341,8 @@ class TFProcess:
 
     def construct_net(self, planes):
         # NCHW format
-        # batch, 18 channels, 19 x 19
-        x_planes = tf.reshape(planes, [-1, 18, 19, 19])
+        # batch, 18 channels, 9 x 9
+        x_planes = tf.reshape(planes, [-1, 18, 9, 9])
 
         # Input convolution
         flow = self.conv_block(x_planes, filter_size=3,
@@ -356,9 +356,9 @@ class TFProcess:
         conv_pol = self.conv_block(flow, filter_size=1,
                                    input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=2)
-        h_conv_pol_flat = tf.reshape(conv_pol, [-1, 2*19*19])
-        W_fc1 = weight_variable([2 * 19 * 19, (19 * 19) + 1])
-        b_fc1 = bias_variable([(19 * 19) + 1])
+        h_conv_pol_flat = tf.reshape(conv_pol, [-1, 2*9*9])
+        W_fc1 = weight_variable([2 * 9 * 9, (9 * 9) + 1])
+        b_fc1 = bias_variable([(9 * 9) + 1])
         self.weights.append(W_fc1)
         self.weights.append(b_fc1)
         h_fc1 = tf.add(tf.matmul(h_conv_pol_flat, W_fc1), b_fc1)
@@ -367,8 +367,8 @@ class TFProcess:
         conv_val = self.conv_block(flow, filter_size=1,
                                    input_channels=self.RESIDUAL_FILTERS,
                                    output_channels=1)
-        h_conv_val_flat = tf.reshape(conv_val, [-1, 19*19])
-        W_fc2 = weight_variable([19 * 19, 256])
+        h_conv_val_flat = tf.reshape(conv_val, [-1, 9*9])
+        W_fc2 = weight_variable([9 * 9, 256])
         b_fc2 = bias_variable([256])
         self.weights.append(W_fc2)
         self.weights.append(b_fc2)
