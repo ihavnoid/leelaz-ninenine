@@ -16,6 +16,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Leela Zero.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import sys
 import glob
 import gzip
@@ -25,6 +26,7 @@ import multiprocessing as mp
 import numpy as np
 import time
 import tensorflow as tf
+import signal
 from tfprocess import TFProcess
 
 # 16 planes, 1 side to move, 1 x 82 probs, 1 winner = 19 lines
@@ -33,7 +35,7 @@ DATA_ITEM_LINES = 16 + 1 + 1 + 1
 # Sane values are from 4096 to 64 or so. The maximum depends on the amount
 # of RAM in your GPU and the network size. You need to adjust the learning rate
 # if you change this.
-BATCH_SIZE = 512
+BATCH_SIZE = 128
 
 def remap_vertex(vertex, symmetry):
     """
@@ -70,10 +72,12 @@ class ChunkParser:
             workers = max(1, mp.cpu_count() - 2)
         print("Using {} worker processes.".format(workers))
         self.readers = []
+        self.mp_instances = []
         for _ in range(workers):
             read, write = mp.Pipe(False)
-            mp.Process(target=self.task,
-                       args=(chunks, write)).start()
+            mp_instance = mp.Process(target=self.task, args=(chunks, write))
+            self.mp_instances.append(mp_instance)
+            mp_instance.start()
             self.readers.append(read)
 
     def convert_train_data(self, text_item, symmetry):
@@ -172,8 +176,11 @@ class ChunkParser:
                 yield r.recv_bytes();
 
 def get_chunks(data_prefix):
-    return glob.glob(data_prefix + "*.gz")
+    x = glob.glob(data_prefix + "*.gz")
+    x.sort()
+    x = x[int(len(x)*0.8):]
 
+    return x
 
 #
 # Tests to check that records can round-trip successfully
@@ -309,8 +316,15 @@ def main(args):
     if args:
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
-    while True:
+
+    for _ in range(12001):
         tfprocess.process(BATCH_SIZE)
+    
+    for x in train_parser.mp_instances:
+        x.terminate()
+        x.join()
+
+    os.killpg(0, signal.SIGTERM)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

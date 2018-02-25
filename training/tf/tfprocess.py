@@ -102,7 +102,7 @@ class TFProcess:
         # You need to change the learning rate here if you are training
         # from a self-play training set, for example start with 0.005 instead.
         opt_op = tf.train.MomentumOptimizer(
-            learning_rate=0.05, momentum=0.9, use_nesterov=True)
+            learning_rate=0.005, momentum=0.9, use_nesterov=True)
 
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):
@@ -185,7 +185,7 @@ class TFProcess:
         self.avg_policy_loss.append(policy_loss)
         self.avg_mse_loss.append(mse_loss)
         self.avg_reg_term.append(reg_term)
-        if steps % 1000 == 0:
+        if steps % 500 == 0:
             time_end = time.time()
             speed = 0
             if self.time_start:
@@ -208,11 +208,11 @@ class TFProcess:
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
             self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
-        if steps % 8000 == 0:
+        if steps % 12000 == 0:
             sum_accuracy = 0
             sum_mse = 0
             sum_policy = 0
-            test_batches = 800
+            test_batches = 100
             for _ in range(0, test_batches):
                 test_policy, test_accuracy, test_mse, _ = self.session.run(
                     [self.policy_loss, self.accuracy, self.mse_loss,
