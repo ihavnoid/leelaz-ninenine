@@ -488,6 +488,53 @@ bool GTP::execute(GameState & game, std::string xinput) {
             gtp_fail_printf(id, "syntax not understood");
         }
         return true;
+    } else if (command.find("autotrain") == 0) {
+        int boardsize = game.board.get_boardsize();
+        std::istringstream cmdstream(command);
+        std::string tmp, filename;
+        int train_count;
+
+        cmdstream >> tmp >> filename >> train_count;
+
+        auto chunker = OutputChunker{filename, true};
+
+        for(int i=0; i<train_count; i++) {
+            int movecount = 0;
+            int winner = 0;
+            do {
+                int move = search->think(game.get_to_move(), UCTSearch::NORMAL);
+                game.play_move(move);
+                //game.display_state();
+        
+                movecount++;
+                if (game.has_resigned()) {
+                    winner = 1 - game.who_resigned(); 
+                    break;
+                }
+                else if(movecount >= boardsize * boardsize *2) {
+                    float ftmp = game.final_score();
+                    winner = ftmp > 0 ? 1 : 0;
+                    break; 
+                }
+                else if(game.get_passes() == 2) {
+                    float ftmp = game.final_score();
+                    winner = ftmp > 0 ? 1 : 0;
+                    break; 
+                }
+            } while (true);
+
+
+            myprintf("winner is : %s\n", winner ? "W" : "B");
+
+            Training::dump_training(winner, chunker);
+
+            // re-init new game
+            float old_komi = game.get_komi();
+            Training::clear_training();
+            game.init_game(9, old_komi);
+        }
+        return true;
+
     } else if (command.find("auto") == 0) {
         do {
             int move = search->think(game.get_to_move(), UCTSearch::NORMAL);
