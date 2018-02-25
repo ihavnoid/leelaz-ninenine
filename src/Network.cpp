@@ -973,7 +973,7 @@ void Network::show_heatmap(const FastState * state, Netresult& result, bool topm
             }
 
             line += boost::str(boost::format("%3d ") % int(score * 1000));
-            if (x == 18) {
+            if (x == 8) {
                 display_map.push_back(line);
                 line.clear();
             }
