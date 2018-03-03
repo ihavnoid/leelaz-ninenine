@@ -498,10 +498,20 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
         auto chunker = OutputChunker{filename, true};
 
+        std::random_device rd;
+        std::ranlux48 gen(rd());
+
         for(int i=0; i<train_count; i++) {
             int movecount = 0;
             int winner = 0;
+            int random_move = gen() % 60;
+            search->set_playout_limit(gen() % 10 + 10);
+            myprintf("random move for : %d\n", random_move);
             do {
+                if(random_move == movecount) {
+                    Training::clear_training();
+                    search->set_playout_limit(cfg_max_playouts);
+                }
                 int move = search->think(game.get_to_move(), UCTSearch::NORMAL);
                 game.play_move(move);
                 //game.display_state();
@@ -513,12 +523,26 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 }
                 else if(movecount >= boardsize * boardsize *2) {
                     float ftmp = game.final_score();
-                    winner = ftmp > 0 ? 1 : 0;
+                    if (ftmp < -0.1) {
+                        winner = 1;
+                    } else if (ftmp > 0.1) {
+                        winner = 0;
+                    } else {
+                        // draw?
+                        winner = -1;
+                    }
                     break; 
                 }
                 else if(game.get_passes() == 2) {
                     float ftmp = game.final_score();
-                    winner = ftmp > 0 ? 1 : 0;
+                    if (ftmp < -0.1) {
+                        winner = 1;
+                    } else if (ftmp > 0.1) {
+                        winner = 0;
+                    } else {
+                        // draw?
+                        winner = -1;
+                    }
                     break; 
                 }
             } while (true);
@@ -526,7 +550,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
 
             myprintf("winner is : %s\n", winner ? "W" : "B");
 
-            Training::dump_training(winner, chunker);
+            if(winner >= 0) {
+                Training::dump_training(winner, chunker);
+            }
 
             // re-init new game
             float old_komi = game.get_komi();
