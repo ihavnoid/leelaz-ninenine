@@ -20,9 +20,10 @@ for((i=0; i<1000; i=i+1)) ; do
         sleep 10
     fi
     
-    # every minute we check if we accumulated 40 more nets
+    # every minute we check if we accumulated 30 more nets
     prev_num_nets=$num_nets
-    for ((num_nets=$(ls -1 ../../traindata_* | wc -l) ; $((num_nets/40)) == $((prev_num_nets/40)) ; num_nets=$(ls -1 ../../traindata_* | wc -l) )) ; do
+    for ((num_nets=$(ls -1 ../../traindata_* | wc -l) ; $((num_nets/30)) == $((prev_num_nets/30)) ; num_nets=$(ls -1 ../../traindata_* | wc -l) )) ; do
+        echo "prev : " $prev_num_nets " current : " $num_nets
         sleep 60
     done
 done

@@ -514,11 +514,13 @@ bool GTP::execute(GameState & game, std::string xinput) {
             int movecount = 0;
             int winner = 0;
             search->set_playout_limit(gen() % 10 + 10);
+            bool is_training = false;
             do {
                 int random_move = gen() % 100;
-                if(random_move <= cfg_resignpct || cfg_resignpct >= 10 || cfg_resignpct < 0) {
+                if(!is_training && (random_move <= cfg_resignpct || cfg_resignpct >= 10 || cfg_resignpct < 0)) {
                     Training::clear_training();
                     search->set_playout_limit(cfg_max_playouts);
+                    is_training = true;
                 }
                 int move = search->think(game.get_to_move(), UCTSearch::NORMAL);
                 game.play_move(move);

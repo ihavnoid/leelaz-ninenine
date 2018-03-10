@@ -96,8 +96,8 @@ using net_t = float;
 #if defined(USE_BLAS) && defined(USE_OPENCL) && !defined(USE_HALF)
 // If both BLAS and OpenCL are fully usable, then check the OpenCL
 // results against BLAS with some probability.
-#define USE_OPENCL_SELFCHECK
-#define SELFCHECK_PROBABILITY 2000
+//#define USE_OPENCL_SELFCHECK
+//#define SELFCHECK_PROBABILITY 2000
 #endif
 
 #if (_MSC_VER >= 1400) /* VC8+ Disable all deprecation warnings */
