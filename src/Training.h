@@ -34,6 +34,7 @@ class TimeStep {
 public:
     Network::NNPlanes planes;
     std::vector<float> probabilities;
+    std::vector<int> legality;
     int to_move;
     float net_winrate;
     float root_uct_winrate;

@@ -156,6 +156,7 @@ void Training::record(GameState& state, UCTNode& root) {
     step.bestmove_visits = best_node.get_visits();
 
     step.probabilities.resize((BOARD_SQUARES) + 1);
+    step.legality.resize((BOARD_SQUARES) + 1);
 
     // Get total visit amount. We count rather
     // than trust the root to avoid ttable issues.
@@ -178,8 +179,10 @@ void Training::record(GameState& state, UCTNode& root) {
         if (move != FastBoard::PASS) {
             auto xy = state.board.get_xy(move);
             step.probabilities[xy.second * BOARD_SIZE + xy.first] = prob;
+            step.legality[xy.second * BOARD_SIZE + xy.first] = 1;
         } else {
             step.probabilities[BOARD_SQUARES] = prob;
+            step.legality[BOARD_SQUARES] = 1;
         }
     }
 
@@ -246,7 +249,12 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
         for (auto it = begin(step.probabilities);
             it != end(step.probabilities); ++it) {
             out << *it;
-            if (next(it) != end(step.probabilities)) {
+            out << " ";
+        }
+        for (auto it = begin(step.legality);
+            it != end(step.legality); ++it) {
+            out << *it;
+            if (next(it) != end(step.legality)) {
                 out << " ";
             }
         }
@@ -320,6 +328,18 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
 
         step.probabilities.resize(BOARD_SQUARES + 1);
         step.probabilities[move_idx] = 1.0f;
+
+        step.legality.resize(BOARD_SQUARES + 1);
+        for (auto y = int{0}; y < BOARD_SIZE; y++) {
+            for (auto x = int{0}; x < BOARD_SIZE; x++) {
+                auto mv = state.board.get_vertex(x,y);
+                if (state.is_move_legal(to_move, mv)) {
+                    step.legality[y * BOARD_SIZE + x] = 1;
+                }
+            }
+        }
+        // pass is always legal
+        step.legality[BOARD_SQUARES] = 1;
 
         train_pos++;
         m_data.emplace_back(step);

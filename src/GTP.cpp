@@ -513,11 +513,10 @@ bool GTP::execute(GameState & game, std::string xinput) {
         for(int i=0; i<train_count; i++) {
             int movecount = 0;
             int winner = 0;
-            int random_move = gen() % 60;
             search->set_playout_limit(gen() % 10 + 10);
-            myprintf("random move for : %d\n", random_move);
             do {
-                if(random_move == movecount) {
+                int random_move = gen() % 100;
+                if(random_move <= cfg_resignpct || cfg_resignpct >= 10 || cfg_resignpct < 0) {
                     Training::clear_training();
                     search->set_playout_limit(cfg_max_playouts);
                 }

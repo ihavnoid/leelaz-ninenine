@@ -29,13 +29,13 @@ import tensorflow as tf
 import signal
 from tfprocess import TFProcess
 
-# 16 planes, 1 side to move, 1 x 82 probs, 1 winner = 19 lines
+# 16 planes, 1 side to move, 1 x 82 probs + 1x82 legality, 1 winner = 19 lines
 DATA_ITEM_LINES = 16 + 1 + 1 + 1
 
 # Sane values are from 4096 to 64 or so. The maximum depends on the amount
 # of RAM in your GPU and the network size. You need to adjust the learning rate
 # if you change this.
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 
 def remap_vertex(vertex, symmetry):
     """
@@ -129,15 +129,21 @@ class ChunkParser:
         assert len(planes) == (18 * 9 * 9)
 
         # Load the probabilities.
-        probabilities = np.array(text_item[17].split()).astype(float)
-        if np.any(np.isnan(probabilities)):
+        probabilities = np.array(text_item[17].split())
+
+        if np.any(np.isnan(probabilities.astype(float))):
             # Work around a bug in leela-zero v0.3, skipping any
             # positions that have a NaN in the probabilities list.
             return False, None
         # Apply symmetries to the probabilities.
-        probabilities = probabilities[self.prob_reflection_table[symmetry]]
-        assert len(probabilities) == 82
+        if len(probabilities) == 82:
+            legal = np.array(["1" for x in range(82)])
+        else:
+            legal = probabilities[82:]
+            probabilities = probabilities[0:82]
 
+        probabilities = probabilities[self.prob_reflection_table[symmetry]].astype(float)
+        legal = legal[self.prob_reflection_table[symmetry]].astype(float)
         # Load the game winner color.
         winner = float(text_item[18])
         assert winner == 1.0 or winner == -1.0
@@ -146,6 +152,7 @@ class ChunkParser:
         example = tf.train.Example(features=tf.train.Features(feature={
             'planes' : tf.train.Feature(bytes_list=tf.train.BytesList(value=[planes])),
             'probs' : tf.train.Feature(float_list=tf.train.FloatList(value=probabilities)),
+            'legal' : tf.train.Feature(float_list=tf.train.FloatList(value=legal)),
             'winner' : tf.train.Feature(float_list=tf.train.FloatList(value=[winner]))}))
         return True, example.SerializeToString()
 
@@ -252,6 +259,7 @@ def run_test(parser):
 def _parse_function(example_proto):
     features = {"planes": tf.FixedLenFeature((1), tf.string),
                 "probs": tf.FixedLenFeature((9*9+1), tf.float32),
+                "legal": tf.FixedLenFeature((9*9+1), tf.float32),
                 "winner": tf.FixedLenFeature((1), tf.float32)}
     parsed_features = tf.parse_single_example(example_proto, features)
     # We receives the planes as a byte array, but we really want
@@ -260,7 +268,7 @@ def _parse_function(example_proto):
     planes = tf.to_float(planes)
     planes = tf.reshape(planes, (18, 9*9))
     # the other features are already in the correct shape as return as-is.
-    return planes, parsed_features["probs"], parsed_features["winner"]
+    return planes, parsed_features["probs"], parsed_features["legal"], parsed_features["winner"]
 
 def benchmark(parser):
     gen = parser.parse_chunk()
@@ -317,7 +325,7 @@ def main(args):
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
 
-    for _ in range(12001):
+    for _ in range(20001):
         tfprocess.process(BATCH_SIZE)
     
     for x in train_parser.mp_instances:

@@ -75,14 +75,17 @@ class TFProcess:
     def init_net(self, next_batch):
         self.x = next_batch[0]  # tf.placeholder(tf.float32, [None, 18, 9 * 9])
         self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
-        self.z_ = next_batch[2] # tf.placeholder(tf.float32, [None, 1])
+        self.legal_ = next_batch[2] # tf.placeholder(tf.float32, [None, 362])
+        self.z_ = next_batch[3] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
+        self.effective_y_ = tf.stop_gradient(self.y_)
+
         # Calculate loss on policy head
         cross_entropy = \
-            tf.nn.softmax_cross_entropy_with_logits(labels=self.y_,
-                                                    logits=self.y_conv)
+            tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.effective_y_,
+                                                    logits=self.y_conv * self.legal_)
         self.policy_loss = tf.reduce_mean(cross_entropy)
 
         # Loss on value head
@@ -110,7 +113,7 @@ class TFProcess:
                 opt_op.minimize(loss, global_step=self.global_step)
 
         correct_prediction = \
-            tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
+            tf.equal(tf.argmax(self.y_conv * self.legal_, 1), tf.argmax(self.y_ * self.legal_, 1))
         correct_prediction = tf.cast(correct_prediction, tf.float32)
         self.accuracy = tf.reduce_mean(correct_prediction)
 
@@ -185,7 +188,7 @@ class TFProcess:
         self.avg_policy_loss.append(policy_loss)
         self.avg_mse_loss.append(mse_loss)
         self.avg_reg_term.append(reg_term)
-        if steps % 500 == 0:
+        if steps % 1000 == 0:
             time_end = time.time()
             speed = 0
             if self.time_start:
@@ -208,7 +211,7 @@ class TFProcess:
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
             self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
-        if steps % 12000 == 0:
+        if steps % 20000 == 0 or steps == 1:
             sum_accuracy = 0
             sum_mse = 0
             sum_policy = 0
