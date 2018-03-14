@@ -35,7 +35,7 @@ DATA_ITEM_LINES = 16 + 1 + 1 + 1
 # Sane values are from 4096 to 64 or so. The maximum depends on the amount
 # of RAM in your GPU and the network size. You need to adjust the learning rate
 # if you change this.
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 
 def remap_vertex(vertex, symmetry):
     """
@@ -69,7 +69,7 @@ class ChunkParser:
 
         # Start worker processes, leave 2 for TensorFlow
         if workers is None:
-            workers = max(1, mp.cpu_count() - 2)
+            workers = max(1, 4)
         print("Using {} worker processes.".format(workers))
         self.readers = []
         self.mp_instances = []
@@ -185,7 +185,7 @@ class ChunkParser:
 def get_chunks(data_prefix):
     x = glob.glob(data_prefix + "*.gz")
     x.sort()
-    x = x[int(len(x)*0.8):]
+    x = x[max(0, int(len(x)-800)):]
 
     return x
 
@@ -325,7 +325,7 @@ def main(args):
         restore_file = args.pop(0)
         tfprocess.restore(restore_file)
 
-    for _ in range(20001):
+    for _ in range(10000+1):
         tfprocess.process(BATCH_SIZE)
     
     for x in train_parser.mp_instances:

@@ -55,7 +55,7 @@ class TFProcess:
         # For exporting
         self.weights = []
 
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.75)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.85)
         config = tf.ConfigProto(gpu_options=gpu_options)
         self.session = tf.Session(config=config)
 
@@ -80,12 +80,14 @@ class TFProcess:
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
-        self.effective_y_ = tf.stop_gradient(self.y_)
+        self.effective_y_ = self.y_
+        self.y_conv_effective_ = self.y_conv - (tf.constant(1.0) - self.legal_) * tf.constant(10000.0)
 
         # Calculate loss on policy head
         cross_entropy = \
-            tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.effective_y_,
-                                                    logits=self.y_conv * self.legal_)
+            tf.nn.softmax_cross_entropy_with_logits(labels=self.effective_y_,
+                                                    logits=self.y_conv_effective_)
+
         self.policy_loss = tf.reduce_mean(cross_entropy)
 
         # Loss on value head
@@ -105,7 +107,7 @@ class TFProcess:
         # You need to change the learning rate here if you are training
         # from a self-play training set, for example start with 0.005 instead.
         opt_op = tf.train.MomentumOptimizer(
-            learning_rate=0.005, momentum=0.9, use_nesterov=True)
+            learning_rate=0.001, momentum=0.9, use_nesterov=True)
 
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):
@@ -113,7 +115,7 @@ class TFProcess:
                 opt_op.minimize(loss, global_step=self.global_step)
 
         correct_prediction = \
-            tf.equal(tf.argmax(self.y_conv * self.legal_, 1), tf.argmax(self.y_ * self.legal_, 1))
+            tf.equal(tf.argmax(self.y_conv_effective_, 1), tf.argmax(self.y_, 1))
         correct_prediction = tf.cast(correct_prediction, tf.float32)
         self.accuracy = tf.reduce_mean(correct_prediction)
 
@@ -211,7 +213,7 @@ class TFProcess:
             self.train_writer.add_summary(train_summaries, steps)
             self.time_start = time_end
             self.avg_policy_loss, self.avg_mse_loss, self.avg_reg_term = [], [], []
-        if steps % 20000 == 0 or steps == 1:
+        if steps % 10000 == 0 or steps == 1:
             sum_accuracy = 0
             sum_mse = 0
             sum_policy = 0
