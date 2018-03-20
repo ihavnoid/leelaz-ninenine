@@ -77,6 +77,7 @@ class TFProcess:
         self.y_ = next_batch[1] # tf.placeholder(tf.float32, [None, 362])
         self.legal_ = next_batch[2] # tf.placeholder(tf.float32, [None, 362])
         self.z_ = next_batch[3] # tf.placeholder(tf.float32, [None, 1])
+        self.score_ = next_batch[4] # tf.placeholder(tf.float32, [None, 1])
         self.batch_norm_count = 0
         self.y_conv, self.z_conv = self.construct_net(self.x)
 
@@ -107,7 +108,7 @@ class TFProcess:
         # You need to change the learning rate here if you are training
         # from a self-play training set, for example start with 0.005 instead.
         opt_op = tf.train.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, use_nesterov=True)
+            learning_rate=0.0002, momentum=0.9, use_nesterov=True)
 
         self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(self.update_ops):

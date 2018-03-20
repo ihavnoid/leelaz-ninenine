@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for((i=0; i<1000; i=i+1)) ; do
-    latest=$(ls -1c *.txt | head -1 | sed 's/\.txt//g')
+    latest=$(ls -1c leelaz*.txt | head -1 | sed 's/\.txt//g')
     num_nets=$(ls -1 ../../traindata_* | wc -l)
 
     setsid nice python3 parse.py ../../traindata_ ${latest}

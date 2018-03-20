@@ -189,9 +189,9 @@ void Training::record(GameState& state, UCTNode& root) {
     m_data.emplace_back(step);
 }
 
-void Training::dump_training(int winner_color, const std::string& filename) {
+void Training::dump_training(int winner_color, float score, const std::string& filename) {
     auto chunker = OutputChunker{filename, true};
-    dump_training(winner_color, chunker);
+    dump_training(winner_color, score, chunker);
 }
 
 void Training::save_training(const std::string& filename) {
@@ -222,7 +222,7 @@ void Training::load_training(std::ifstream& in) {
     }
 }
 
-void Training::dump_training(int winner_color, OutputChunker& outchunk) {
+void Training::dump_training(int winner_color, float score, OutputChunker& outchunk) {
     auto training_str = std::string{};
     for (const auto& step : m_data) {
         auto out = std::stringstream{};
@@ -265,6 +265,15 @@ void Training::dump_training(int winner_color, OutputChunker& outchunk) {
         } else {
             out << "-1";
         }
+
+        // And how much it won/lost (zero if resigned)
+        score = (score>0)?score:-score;
+        if (step.to_move == winner_color) {
+            out << " " << score;
+        } else {
+            out << " " << (-score);
+        }
+
         out << std::endl;
         training_str.append(out.str());
     }
@@ -347,7 +356,7 @@ void Training::process_game(GameState& state, size_t& train_pos, int who_won,
         counter++;
     } while (state.forward_move() && counter < tree_moves.size());
 
-    dump_training(who_won, outchunker);
+    dump_training(who_won, 0.0, outchunker);
 }
 
 void Training::dump_supervised(const std::string& sgf_name,

@@ -4,7 +4,7 @@ suffix=$1
 gpunum=$2
 
 for((i=0;i<50000;i=i+1)) ; do
-    resign_rate=$((i%2))
+    resign_rate=$(((i%2)*10))
     timestamp=$(date +%y%m%d_%H%M%S)_${suffix}
     latest_weight=$(ls -1c training/tf/*.txt | head -1)
     leelaz_cmd="src/leelaz-current -q -m 8 -n -d -r $resign_rate -t 1 -p 400 --noponder --gtp --gpu $gpunum"

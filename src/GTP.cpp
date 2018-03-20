@@ -510,7 +510,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
         std::random_device rd;
         std::ranlux48 gen(rd());
 
+
         for(int i=0; i<train_count; i++) {
+            float ftmp = 0.0;
             int movecount = 0;
             int winner = 0;
             search->set_playout_limit(gen() % 10 + 10);
@@ -532,7 +534,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     break;
                 }
                 else if(movecount >= boardsize * boardsize *2) {
-                    float ftmp = game.final_score();
+                    ftmp = game.final_score();
                     if (ftmp < -0.1) {
                         winner = 1;
                     } else if (ftmp > 0.1) {
@@ -544,7 +546,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
                     break; 
                 }
                 else if(game.get_passes() == 2) {
-                    float ftmp = game.final_score();
+                    ftmp = game.final_score();
                     if (ftmp < -0.1) {
                         winner = 1;
                     } else if (ftmp > 0.1) {
@@ -561,7 +563,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             myprintf("winner is : %s\n", winner ? "W" : "B");
 
             if(winner >= 0) {
-                Training::dump_training(winner, chunker);
+                Training::dump_training(winner, ftmp, chunker);
             }
 
             // re-init new game
@@ -827,7 +829,7 @@ bool GTP::execute(GameState & game, std::string xinput) {
             return true;
         }
 
-        Training::dump_training(who_won, filename);
+        Training::dump_training(who_won, 0.0, filename);
 
         if (!cmdstream.fail()) {
             gtp_printf(id, "");

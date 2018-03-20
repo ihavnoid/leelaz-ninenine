@@ -7,7 +7,7 @@ gpunum=$2
 
 for((i=0;i<50000;i=i+1)) ; do
     host=$(cat remote_host)
-    resign_rate=$((i%2))
+    resign_rate=$((i%5+5))
     timestamp=$(date +%y%m%d_%H%M%S)_${suffix}
     latest_weight=$(ls -1c training/tf/*.txt | head -1)
     leelaz_cmd="leela-zero/src/leelaz-current -q -m 8 -n -d -r $resign_rate -t 1 -p 400 --noponder --gtp --gpu $gpunum"
@@ -21,6 +21,7 @@ for((i=0;i<50000;i=i+1)) ; do
 
     sleep 5 
 
+    ${SSH} ${host} sudo nvidia-smi -pm 1
     ${SCP} -C ./$latest_weight ${host}:${timestamp}.txt
     ${SCP} -C ./${timestamp}_run.sh ${host}:${timestamp}_run.sh
     ${SSH} ${host} ./${timestamp}_run.sh ${timestamp}

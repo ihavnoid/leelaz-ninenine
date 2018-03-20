@@ -1,14 +1,17 @@
 #!/bin/bash
 
+instance=instance-1
+zone=us-central1-c
+
 for(( ; ; )) ; do
-    gcloud compute instances list | grep RUNNING
+    gcloud compute instances list | grep ${instance} | grep RUNNING
     running=$?
-    gcloud compute instances list | grep TERMINATED
+    gcloud compute instances list | grep ${instance} | grep TERMINATED
     terminated=$?
     echo $running $terminated
-    [ 0 -eq $running ] && gcloud compute instances list | grep RUNNING | awk '{print $6;}' > remote_host
+    [ 0 -eq $running ] && gcloud compute instances describe --zone ${zone} ${instance} | grep natIP | awk '{print $2;}' > remote_host
     if [ 0 -eq $terminated ] ; then
-        gcloud compute instances start instance-1
+        gcloud compute instances start --zone=${zone} ${instance}
         sleep 5
         remote_host=$(cat remote_host)
         echo "xxxxxxxx" > remote_host

@@ -67,6 +67,7 @@ class Training {
 public:
     static void clear_training();
     static void dump_training(int winner_color,
+                              float score,
                               const std::string& out_filename);
     static void dump_debug(const std::string& out_filename);
     static void record(GameState& state, UCTNode& node);
@@ -77,6 +78,7 @@ public:
     static void load_training(const std::string& filename);
 
     static void dump_training(int winner_color,
+                              float score,
                               OutputChunker& outchunker);
 private:
 
