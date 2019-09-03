@@ -37,7 +37,7 @@ source and remove the line that says "#define USE_OPENCL".
     cd ..
     
     # An untrained, random neural net parameter is provided.  This really plays random moves.
-    src/leelaz --weights example-data/initia_9x9.txt
+    src/leelaz --weights example-data/initial_9x9.txt
     
 # Weights format
 
